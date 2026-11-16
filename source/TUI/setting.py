@@ -52,7 +52,7 @@ class Setting(Screen):
             ),
             Input(
                 self.data["name_format"],
-                placeholder="发布时间 作者昵称 作品标题",
+                placeholder="%作者昵称% [%发布时间%] %作品ID%",
                 valid_empty=True,
                 id="name_format",
             ),

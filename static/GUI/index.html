@@ -398,30 +398,18 @@
             </section>
 
             <section class="view settings-view" data-page="settings">
-                <div class="page-heading settings-heading">
-                    <div><h2 data-i18n="nav.settings"></h2></div>
-                    <div class="heading-actions">
-                        <button class="secondary-button" id="discardSettings" type="button">
-                            <svg>
-                                <use href="#x"/>
-                            </svg>
-                            <span data-i18n="settings.discard"></span></button>
-                        <button class="primary-button" id="saveSettings" type="button">
-                            <svg>
-                                <use href="#check"/>
-                            </svg>
-                            <span data-i18n="settings.save"></span></button>
-                    </div>
-                </div>
                 <div class="settings-layout">
-                    <nav class="settings-nav">
-                        <button class="active" type="button" data-setting="download-settings"
-                                data-i18n="settings.download"></button>
-                        <button type="button" data-setting="archive-settings" data-i18n="settings.archive"></button>
-                        <button type="button" data-setting="network-settings" data-i18n="settings.network"></button>
-                        <button type="button" data-setting="general-settings" data-i18n="settings.general"></button>
-                    </nav>
-                    <div class="surface settings-panel" id="settingsPanel">
+                    <div class="settings-side">
+                        <h2 data-i18n="nav.settings"></h2>
+                        <nav class="settings-nav">
+                            <button class="active" type="button" data-setting="download-settings"
+                                    data-i18n="settings.download"></button>
+                            <button type="button" data-setting="archive-settings" data-i18n="settings.archive"></button>
+                            <button type="button" data-setting="network-settings" data-i18n="settings.network"></button>
+                            <button type="button" data-setting="general-settings" data-i18n="settings.general"></button>
+                        </nav>
+                    </div>
+                    <div class="settings-panel" id="settingsPanel">
                         <section class="setting-group" id="download-settings">
                             <div class="group-heading"><h3 data-i18n="settings.download"></h3></div>
                             <div class="field-grid">
@@ -433,23 +421,15 @@
                                 <label class="field full"><span data-i18n="settings.folder_name"></span><input
                                         id="settingsFolderName" type="text"><small
                                         data-i18n="settings.folder_name_help"></small></label>
-                                <div class="field full name-format-field">
+                                <div class="field full">
                                     <span data-i18n="settings.name_format"></span>
-                                    <small data-i18n="settings.name_format_help"></small>
-                                    <div class="name-format-editor">
-                                        <section class="name-format-group">
-                                            <header><strong data-i18n="settings.enabled_fields"></strong><span
-                                                    id="enabledNameFieldCount">0</span></header>
-                                            <div class="name-format-zone enabled" id="enabledNameFields"
-                                                 data-name-state="enabled"></div>
-                                        </section>
-                                        <section class="name-format-group">
-                                            <header><strong data-i18n="settings.disabled_fields"></strong><span
-                                                    id="disabledNameFieldCount">0</span></header>
-                                            <div class="name-format-zone" id="disabledNameFields"
-                                                 data-name-state="disabled"></div>
-                                        </section>
+                                    <div class="name-format-preview">
+                                        <span data-i18n="settings.name_format_preview"></span>
+                                        <code id="nameFormatPreview"></code>
                                     </div>
+                                    <div class="name-format-editor" id="nameFormatEditor"
+                                         contenteditable="true" spellcheck="false"></div>
+                                    <div class="name-format-fields" id="nameFormatFields"></div>
                                 </div>
                             </div>
                             <div class="setting-rows">
@@ -531,39 +511,16 @@
                         </section>
                         <section class="setting-group" id="network-settings">
                             <div class="group-heading"><h3 data-i18n="settings.network"></h3></div>
-                            <div class="field-grid">
-                                <label class="field full"><span data-i18n="settings.cookie"></span><textarea
-                                        id="settingsCookie" rows="4" spellcheck="false"
-                                        autocomplete="off"></textarea></label>
-                                <label class="field full"><span data-i18n="settings.impersonate"></span><input
-                                        id="settingsImpersonate"
-                                                                                         type="text"></label>
-                                <label class="field"><span data-i18n="settings.proxy"></span><input id="settingsProxy"
-                                                                                                    type="text"
-                                                                                                    data-i18n-placeholder="settings.proxy_placeholder"></label>
-                                <label class="field"><span data-i18n="settings.timeout"></span>
-                                    <div class="suffix-input"><input id="settingsTimeout" type="number" min="1"><span
-                                            data-i18n="settings.second"></span>
-                                    </div>
-                                </label>
-                                <label class="field"><span data-i18n="settings.retry"></span>
-                                    <div class="suffix-input"><input id="settingsMaxRetry" type="number" min="0"><span
-                                            data-i18n="settings.times"></span>
-                                    </div>
-                                </label>
-                                <label class="field"><span data-i18n="settings.avg_delay"></span>
-                                    <div class="suffix-input"><input id="settingsAvgDelay" type="number" min="0.1"
-                                                                     step="0.1"><span
-                                            data-i18n="settings.second"></span>
-                                    </div>
-                                    <small data-i18n="settings.avg_delay_help"></small></label>
-                                <label class="field"><span data-i18n="settings.chunk"></span>
-                                    <div class="suffix-input wide-suffix"><input id="settingsChunkSize" type="number"
-                                                                                 min="1" step="1"><span
-                                            data-i18n="settings.byte"></span></div>
-                                    <small data-i18n="settings.chunk_help"></small></label>
+                            <div class="field-grid network-grid">
+                                <label class="field full"><span data-i18n="settings.cookie"></span><textarea id="settingsCookie" rows="4" spellcheck="false" autocomplete="off"></textarea></label>
+                                <label class="field full"><span data-i18n="settings.impersonate"></span><input id="settingsImpersonate" type="text"></label>
+                                <label class="field"><span data-i18n="settings.proxy"></span><input id="settingsProxy" type="text" data-i18n-placeholder="settings.proxy_placeholder"></label>
+                                <label class="field"><span data-i18n="settings.retry"></span><div class="suffix-input"><input id="settingsMaxRetry" type="number" min="0"><span data-i18n="settings.times"></span></div></label>
+                                <label class="field"><span data-i18n="settings.timeout"></span><div class="suffix-input"><input id="settingsTimeout" type="number" min="1"><span data-i18n="settings.second"></span></div></label>
+                                <label class="field wide-half"><span data-i18n="settings.avg_delay"></span><div class="suffix-input"><input id="settingsAvgDelay" type="number" min="0.1" step="0.1"><span data-i18n="settings.second"></span></div><small data-i18n="settings.avg_delay_help"></small></label>
+                                <label class="field wide-half"><span data-i18n="settings.chunk"></span><div class="suffix-input wide-suffix"><input id="settingsChunkSize" type="number" min="1" step="1"><span data-i18n="settings.byte"></span></div><small data-i18n="settings.chunk_help"></small></label>
                             </div>
-                            <div class="setting-rows standalone">
+                            <div class="setting-rows">
                                 <div class="setting-row">
                                     <div><strong data-i18n="settings.proxy_download"></strong></div>
                                     <label class="toggle"><input id="settingsProxyDownload" type="checkbox"><span
@@ -573,14 +530,14 @@
                         </section>
                         <section class="setting-group" id="general-settings">
                             <div class="group-heading"><h3 data-i18n="settings.general"></h3></div>
-                            <div class="field-grid select-grid general-grid">
+                            <div class="field-grid select-grid">
                                 <label class="field"><span data-i18n="settings.language"></span><select
                                         id="settingsLanguage">
                                     <option value="zh_CN" data-i18n="settings.chinese"></option>
                                     <option value="en_US" data-i18n="settings.english"></option>
                                 </select></label>
                             </div>
-                            <div class="setting-rows standalone">
+                            <div class="setting-rows">
                                 <div class="setting-row">
                                     <div><strong data-i18n="settings.script_server"></strong><span
                                             data-i18n="settings.script_server_help"></span></div>

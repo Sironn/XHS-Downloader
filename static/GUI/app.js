@@ -607,7 +607,7 @@
 
     const logConsole = document.getElementById("logConsole");
 
-    // 设置导航仅滚动设置面板，避免改变整个窗口的滚动位置。
+    // 左侧导航独立不滚，右侧设置面板滚动并联动导航高亮。
     const settingsPanel = document.getElementById("settingsPanel");
     const settingsNavButtons = [...document.querySelectorAll(".settings-nav button")];
     const settingsGroups = settingsNavButtons
@@ -671,142 +671,187 @@
     settingsPanel?.addEventListener("scroll", updateSettingsNavigation, {passive: true});
     window.addEventListener("resize", updateSettingsNavigation);
 
-    // 文件命名字段可在“启用”和“未启用”两栏之间拖拽，启用栏顺序即配置保存顺序。
+    // 文件名称格式使用可编辑模板：预设字段以 %字段% 占位符存储，编辑器中渲染为可辨识的 chip，
+    // 用户可自由输入分隔符和固定文字；输入内容实时同步预览并自动保存。
     let NAME_FORMAT_FIELDS = [];
-    const enabledNameFields = document.getElementById("enabledNameFields");
-    const disabledNameFields = document.getElementById("disabledNameFields");
-    let draggedNameField = null;
-    let nameFieldWasDragged = false;
-    let pointerNameDrag = null;
+    const nameFormatEditor = document.getElementById("nameFormatEditor");
+    const nameFormatFields = document.getElementById("nameFormatFields");
+    const nameFormatPreview = document.getElementById("nameFormatPreview");
 
-    function updateNameFormatCounts() {
-        document.getElementById("enabledNameFieldCount").textContent = String(enabledNameFields.children.length);
-        document.getElementById("disabledNameFieldCount").textContent = String(disabledNameFields.children.length);
+    // 预览示例值：为每个字段提供一组贴近真实数据的展示值。
+    const NAME_PREVIEW_VALUES = {
+        "收藏数量": "128",
+        "评论数量": "32",
+        "分享数量": "15",
+        "点赞数量": "1024",
+        "作品标签": "美食",
+        "作品ID": "5078219042",
+        "作品标题": "城市美食探店",
+        "作品描述": "今天分享一家宝藏小店",
+        "作品类型": "图文",
+        "发布时间": "2024-08-18 14\u02D030\u02D000",
+        "最后更新时间": "2024-08-18 15\u02D000\u02D000",
+        "作者昵称": "旅行日记",
+        "作者ID": "5f0a1b2c3d4e",
+    };
+
+    function escapeRegExp(value) {
+        return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 
-    function placeNameFormatToken(zone, target, clientX, clientY) {
-        if (!target || target === draggedNameField) {
-            zone.append(draggedNameField);
+    // 将编辑器节点序列化为 %字段% 模板字符串：文本节点取原文，chip 还原为 %字段%。
+    function nameFormatValue() {
+        let result = "";
+        nameFormatEditor.childNodes.forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                result += node.textContent;
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                result += node.dataset.nameField
+                    ? `%${node.dataset.nameField}%`
+                    : node.textContent;
+            }
+        });
+        return result;
+    }
+
+    function renderNameFormatPreview() {
+        // 将模板中的 %字段% 占位符替换为示例值，展示真实文件名效果。
+        let preview = nameFormatValue();
+        NAME_FORMAT_FIELDS.forEach((field) => {
+            preview = preview.replace(
+                new RegExp(`%${escapeRegExp(field)}%`, "g"),
+                NAME_PREVIEW_VALUES[field] ?? "",
+            );
+        });
+        nameFormatPreview.textContent = preview || "-";
+    }
+
+    function createNameFormatChip(field) {
+        // 字段选择面板中的可点击项，点击后插入到编辑器光标处。
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "name-format-field-chip";
+        chip.dataset.nameField = field;
+        chip.textContent = translateText(field);
+        chip.title = translateText("settings.insert_field");
+        return chip;
+    }
+
+    function renderNameFormatFields() {
+        nameFormatFields.replaceChildren(
+            ...NAME_FORMAT_FIELDS.map((field) => createNameFormatChip(field)),
+        );
+    }
+
+    // 编辑器内部的 chip 节点：contenteditable=false 的原子元素。
+    function buildNameFormatChipNode(field) {
+        const chipNode = document.createElement("span");
+        chipNode.className = "name-format-token";
+        chipNode.contentEditable = "false";
+        chipNode.dataset.nameField = field;
+        chipNode.textContent = translateText(field);
+        return chipNode;
+    }
+
+    function insertNameFormatField(field) {
+        // 将字段插入到编辑器当前光标位置，并触发预览与自动保存。
+        nameFormatEditor.focus();
+        const selection = window.getSelection();
+        let range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+        if (!range || !nameFormatEditor.contains(range.commonAncestorContainer)) {
+            range = document.createRange();
+            range.selectNodeContents(nameFormatEditor);
+            range.collapse(false);
+        }
+        range.deleteContents();
+        const chipNode = buildNameFormatChipNode(field);
+        range.insertNode(chipNode);
+        range.setStartAfter(chipNode);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        renderNameFormatPreview();
+        scheduleSettingsSave();
+    }
+
+    // 将 %字段% 模板还原为编辑器内容（chip + 裸文本节点，字面文本与 chip 共用 line-height，baseline 对齐）。
+    function applyNameFormat(value) {
+        const template = String(value || "");
+        nameFormatEditor.replaceChildren();
+        const pattern = /%([^%]+)%/g;
+        let cursor = 0;
+        let match;
+        while ((match = pattern.exec(template)) !== null) {
+            const literal = template.slice(cursor, match.index);
+            if (literal) nameFormatEditor.appendChild(document.createTextNode(literal));
+            const field = match[1];
+            if (NAME_FORMAT_FIELDS.includes(field)) {
+                nameFormatEditor.appendChild(buildNameFormatChipNode(field));
+            } else {
+                nameFormatEditor.appendChild(document.createTextNode(match[0]));
+            }
+            cursor = pattern.lastIndex;
+        }
+        const tail = template.slice(cursor);
+        if (tail) nameFormatEditor.appendChild(document.createTextNode(tail));
+        renderNameFormatPreview();
+    }
+
+    nameFormatFields.addEventListener("click", (event) => {
+        const chip = event.target.closest(".name-format-field-chip");
+        if (!chip) return;
+        insertNameFormatField(chip.dataset.nameField);
+    });
+
+    nameFormatEditor.addEventListener("input", () => {
+        renderNameFormatPreview();
+        scheduleSettingsSave();
+    });
+
+    // 判断光标（折叠）或选区（展开）是否命中 chip，命中则原子删除整块，防止浏览器拆解 chip。
+    nameFormatEditor.addEventListener("beforeinput", (event) => {
+        const delTypes = ["deleteContentBackward", "deleteContentForward", "deleteByCut", "deleteByDrag"];
+        if (!delTypes.includes(event.inputType)) return;
+        const selection = window.getSelection();
+        if (!selection?.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        if (!nameFormatEditor.contains(range.commonAncestorContainer)) return;
+
+        const chips = [...nameFormatEditor.querySelectorAll(".name-format-token")];
+
+        // 展开选区：删除任何与选区相交的 chip。
+        if (!range.collapsed) {
+            const hit = chips.filter((chip) => range.intersectsNode(chip));
+            if (hit.length === 0) return;
+            event.preventDefault();
+            hit.forEach((chip) => chip.remove());
+            renderNameFormatPreview();
+            scheduleSettingsSave();
             return;
         }
-        const bounds = target.getBoundingClientRect();
-        const before = clientY < bounds.top + (bounds.height / 2)
-            || (clientY <= bounds.bottom && clientX < bounds.left + (bounds.width / 2));
-        zone.insertBefore(draggedNameField, before ? target : target.nextSibling);
-    }
 
-    function createNameFormatToken(field, enabled) {
-        // 同时支持桌面 drag/drop 和触摸设备 pointer 拖拽；点击字段项可切换启用状态。
-        const token = document.createElement("button");
-        token.className = "name-format-token";
-        token.type = "button";
-        token.draggable = true;
-        token.dataset.nameField = field;
-        token.title = translateText(enabled ? "name.drag_disable" : "name.drag_enable");
-        token.textContent = translateText(field);
-        token.addEventListener("click", () => {
-            if (nameFieldWasDragged) return;
-            const target = token.parentElement === enabledNameFields ? disabledNameFields : enabledNameFields;
-            target.append(token);
-            token.title = translateText(target === enabledNameFields ? "name.drag_disable" : "name.drag_enable");
-            updateNameFormatCounts();
-        });
-        token.addEventListener("dragstart", (event) => {
-            draggedNameField = token;
-            nameFieldWasDragged = true;
-            event.dataTransfer.effectAllowed = "move";
-            event.dataTransfer.setData("text/plain", field);
-            window.setTimeout(() => token.classList.add("dragging"));
-        });
-        token.addEventListener("dragend", () => {
-            token.classList.remove("dragging");
-            document.querySelectorAll(".name-format-zone").forEach((zone) => zone.classList.remove("drag-over"));
-            token.title = translateText(
-                token.parentElement === enabledNameFields ? "name.drag_disable" : "name.drag_enable");
-            draggedNameField = null;
-            updateNameFormatCounts();
-            window.setTimeout(() => {
-                nameFieldWasDragged = false;
-            });
-        });
-        token.addEventListener("pointerdown", (event) => {
-            if (event.pointerType === "mouse") return;
-            pointerNameDrag = {
-                token,
-                pointerId: event.pointerId,
-                startX: event.clientX,
-                startY: event.clientY,
-                active: false,
-            };
-            token.setPointerCapture(event.pointerId);
-        });
-        token.addEventListener("pointermove", (event) => {
-            if (!pointerNameDrag || pointerNameDrag.pointerId !== event.pointerId) return;
-            const distance = Math.hypot(
-                event.clientX - pointerNameDrag.startX,
-                event.clientY - pointerNameDrag.startY,
-            );
-            if (!pointerNameDrag.active && distance < 8) return;
-            event.preventDefault();
-            pointerNameDrag.active = true;
-            nameFieldWasDragged = true;
-            draggedNameField = token;
-            token.classList.add("dragging");
-            const target = document.elementFromPoint(event.clientX, event.clientY);
-            const zone = target?.closest(".name-format-zone");
-            if (!zone) return;
-            document.querySelectorAll(".name-format-zone")
-                    .forEach((item) => item.classList.toggle("drag-over", item === zone));
-            placeNameFormatToken(zone, target.closest(".name-format-token"), event.clientX, event.clientY);
-        });
-        const finishPointerDrag = (event) => {
-            if (!pointerNameDrag || pointerNameDrag.pointerId !== event.pointerId) return;
-            const wasActive = pointerNameDrag.active;
-            token.classList.remove("dragging");
-            document.querySelectorAll(".name-format-zone").forEach((zone) => zone.classList.remove("drag-over"));
-            if (token.hasPointerCapture(event.pointerId)) token.releasePointerCapture(event.pointerId);
-            pointerNameDrag = null;
-            draggedNameField = null;
-            updateNameFormatCounts();
-            if (wasActive) window.setTimeout(() => {
-                nameFieldWasDragged = false;
-            });
-        };
-        token.addEventListener("pointerup", finishPointerDrag);
-        token.addEventListener("pointercancel", finishPointerDrag);
-        return token;
-    }
-
-    function applyNameFormat(value) {
-        // 将配置中的空格分隔字段还原为两栏控件，并去除重复项及未知字段。
-        const fields = String(value).split(/\s+/).filter((field, index, items) => (
-            NAME_FORMAT_FIELDS.includes(field) && items.indexOf(field) === index
-        ));
-        const enabled = new Set(fields);
-        enabledNameFields.replaceChildren(...fields.map((field) => createNameFormatToken(field, true)));
-        disabledNameFields.replaceChildren(...NAME_FORMAT_FIELDS
-            .filter((field) => !enabled.has(field))
-            .map((field) => createNameFormatToken(field, false)));
-        updateNameFormatCounts();
-    }
-
-    document.querySelectorAll(".name-format-zone").forEach((zone) => {
-        zone.addEventListener("dragover", (event) => {
-            if (!draggedNameField) return;
-            event.preventDefault();
-            event.dataTransfer.dropEffect = "move";
-            zone.classList.add("drag-over");
-            const target = event.target.closest(".name-format-token");
-            placeNameFormatToken(zone, target, event.clientX, event.clientY);
-        });
-        zone.addEventListener("dragleave", (event) => {
-            if (!zone.contains(event.relatedTarget)) zone.classList.remove("drag-over");
-        });
-        zone.addEventListener("drop", (event) => {
-            event.preventDefault();
-            zone.classList.remove("drag-over");
-            updateNameFormatCounts();
-        });
+        // 折叠光标：沿 DOM 向上找紧邻的 chip（处理光标落在文本节点或 span 内的情况）。
+        const backward = event.inputType === "deleteContentBackward";
+        const node = backward ? range.startContainer : range.endContainer;
+        const offset = backward ? range.startOffset : range.endOffset;
+        if (node.nodeType === Node.TEXT_NODE) {
+            if (backward ? offset > 0 : offset < node.textContent.length) return;
+        }
+        let cursor = node;
+        while (cursor && cursor !== nameFormatEditor) {
+            const sibling = backward ? cursor.previousSibling : cursor.nextSibling;
+            if (sibling) {
+                if (sibling.nodeType === Node.ELEMENT_NODE && sibling.classList.contains("name-format-token")) {
+                    event.preventDefault();
+                    sibling.remove();
+                    renderNameFormatPreview();
+                    scheduleSettingsSave();
+                    return;
+                }
+                if (sibling.nodeType === Node.TEXT_NODE && sibling.textContent.length > 0) return;
+            }
+            cursor = cursor.parentNode;
+        }
     });
 
     function initializeTranslatedUi() {
@@ -1109,6 +1154,7 @@
         document.getElementById("settingsScriptServer").checked = Boolean(settings.script_server);
         document.getElementById("settingsProxyDownload").checked = Boolean(settings.proxy_download);
         settingsLoaded = true;
+        bindSettingsAutoSave();
     }
 
     async function refreshUiTranslations() {
@@ -1118,10 +1164,9 @@
         NAME_FORMAT_FIELDS = payload.name_fields;
         document.documentElement.lang = payload.language === "en_US" ? "en" : "zh-CN";
         applyStaticTranslations();
-        const nameFormat = [...enabledNameFields.children]
-            .map((token) => token.dataset.nameField)
-            .join(" ");
+        const nameFormat = nameFormatValue();
         applyNameFormat(nameFormat);
+        renderNameFormatFields();
         const activeView = document.querySelector(".view.active")?.dataset.page;
         if (viewNames.has(activeView)) {
             updateViewHeader(activeView);
@@ -1130,15 +1175,13 @@
     }
 
     function collectNativeSettings() {
-        // 提交当前语言的字段显示名称；后端负责将英文名称还原为中文配置值。
-        const nameFormat = [...enabledNameFields.children]
-            .map((token) => token.textContent.trim());
+        // 名称格式以 %字段% 模板字符串提交，后端还原英文显示名并校验占位符。
         const chunkSize = Math.max(
             1, Number.parseInt(document.getElementById("settingsChunkSize").value, 10) || 2097152);
         return {
             work_path: document.getElementById("settingsWorkPath").value.trim(),
             folder_name: document.getElementById("settingsFolderName").value.trim() || "Download",
-            name_format: nameFormat,
+            name_format: nameFormatValue(),
             image_download: document.getElementById("settingsImageDownload").checked,
             video_download: document.getElementById("settingsVideoDownload").checked,
             live_download: document.getElementById("settingsLiveDownload").checked,
@@ -1162,6 +1205,53 @@
             script_server: document.getElementById("settingsScriptServer").checked,
             proxy_download: document.getElementById("settingsProxyDownload").checked,
         };
+    }
+
+    // 设置项修改后自动保存：防抖后静默提交，避免与状态轮询争抢表单内容。
+    let settingsSaveTimer = null;
+    let settingsSaveBusy = false;
+
+    async function saveSettingsQuietly() {
+        if (settingsSaveBusy) return;
+        settingsSaveBusy = true;
+        try {
+            const result = await nativeApi.save_settings(collectNativeSettings());
+            if (!result.ok) throw new Error(result.error);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            showToast(message, "warning");
+        } finally {
+            settingsSaveBusy = false;
+        }
+    }
+
+    function scheduleSettingsSave() {
+        window.clearTimeout(settingsSaveTimer);
+        settingsSaveTimer = window.setTimeout(() => void saveSettingsQuietly(), 600);
+    }
+
+    function bindSettingsAutoSave() {
+        // 设置面板内所有可编辑控件变更后触发自动保存；命名格式编辑器已单独绑定。
+        const controls = settingsPanel.querySelectorAll("input, select, textarea");
+        controls.forEach((control) => {
+            const eventType = control.tagName === "SELECT" || control.type === "checkbox"
+                ? "change" : "input";
+            control.addEventListener(eventType, () => {
+                if (!settingsLoaded) return;
+                scheduleSettingsSave();
+            });
+        });
+        // 语言变更需要重建翻译后的命名格式控件，保存后重新拉取语言包。
+        const language = document.getElementById("settingsLanguage");
+        language.addEventListener("change", () => {
+            if (!settingsLoaded) return;
+            void runNativeAction(async () => {
+                const result = await nativeApi.save_settings(collectNativeSettings());
+                if (!result.ok) throw new Error(result.error);
+                settingsLoaded = false;
+                await refreshUiTranslations();
+            });
+        });
     }
 
     function renderNativeMonitor(monitor) {
@@ -1344,24 +1434,6 @@
             void runNativeAction(async () => {
                 const opened = await nativeApi.open_download_folder();
                 if (!opened) throw new Error(translateText("toast.folder_unavailable"));
-            });
-        } else if (id === "saveSettings") {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            void runNativeAction(async () => {
-                const result = await nativeApi.save_settings(collectNativeSettings());
-                if (!result.ok) throw new Error(result.error);
-                settingsLoaded = false;
-                await refreshUiTranslations();
-                showToast(translateText("settings.saved"));
-            }, {loading: true});
-        } else if (id === "discardSettings") {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            void runNativeAction(async () => {
-                settingsLoaded = false;
-                applyNativeSettings(await nativeApi.get_settings());
-                showToast(translateText("settings.discarded"));
             });
         } else if (id === "pageCheckUpdate") {
             event.preventDefault();

@@ -14,7 +14,7 @@ class Settings:
         "mapping_data": {},  # 账号备注映射数据
         "work_path": "",  # 工作目录路径
         "folder_name": "Download",  # 下载文件夹名称
-        "name_format": "发布时间 作者昵称 作品标题",  # 文件命名格式
+        "name_format": "%作者昵称% [%发布时间%] %作品ID%",  # 文件命名格式
         "impersonate": IMPERSONATE,  # 浏览器模拟目标
         "cookie": "",  # Cookie
         "proxy": None,  # 代理设置
@@ -28,12 +28,12 @@ class Settings:
         "image_download": True,  # 是否下载图文
         "video_download": True,  # 是否下载视频
         "video_cover_download": False,  # 是否下载视频封面
-        "live_download": False,  # 是否下载动图
+        "live_download": True,  # 是否下载动图
         "video_preference": "resolution",  # 视频文件偏好
         "folder_mode": False,  # 文件夹归档模式
         "download_record": True,  # 是否记录下载历史
-        "author_archive": False,  # 是否按作者归档
-        "write_mtime": False,  # 是否写入修改时间
+        "author_archive": True,  # 是否按作者归档
+        "write_mtime": True,  # 是否写入修改时间
         "language": "zh_CN",  # 语言设置
         "script_server": False,  # 是否启用脚本服务器
         "note_format": "",  # 作品信息格式(txt/md/all)

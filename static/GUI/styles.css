@@ -1512,19 +1512,33 @@ input:checked + .checkmark {
 .settings-layout {
     display: grid;
     grid-template-columns: 160px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     gap: 20px;
     align-items: stretch;
+}
+
+.settings-view {
+    padding: 20px 0;
+    overflow: hidden;
 }
 
 .settings-view .settings-layout {
     min-height: 0;
     flex: 1;
-    overflow: hidden;
+}
+
+.settings-side {
+    min-height: 0;
+}
+
+.settings-side h2 {
+    margin: 0 0 18px;
+    font-size: 22px;
+    font-weight: 680;
+    line-height: 30px;
 }
 
 .settings-nav {
-    position: sticky;
-    top: 0;
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -1546,17 +1560,41 @@ input:checked + .checkmark {
 .settings-panel {
     height: 100%;
     min-height: 0;
-    overflow: auto;
+    overflow-y: auto;
+    scrollbar-width: none;
 }
 
+.settings-panel::-webkit-scrollbar {
+    display: none;
+}
+
+/* 设置模块统一标准：标题区 / 字段区 / 开关区一套边距。
+   标题下的分割线铺满整行；子设置内的分割线左右内缩 24px，与文本对齐。 */
 .setting-group {
-    padding: 0 24px 25px;
+    padding: 0;
+    margin-bottom: 20px;
+    overflow: hidden;
     scroll-margin-top: 10px;
-    border-bottom: 1px solid var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
 }
 
 .setting-group:last-child {
-    border-bottom: 0;
+    margin-bottom: 0;
+}
+
+/* 标题下的分割线：铺满整行。 */
+.setting-group > .group-heading {
+    border-bottom: 1px solid var(--border);
+}
+
+/* 子设置内的分割线：前后各空出 24px（与文本到边框的距离一致），模块结尾不加线。 */
+.setting-group > :not(:last-child):not(.group-heading) {
+    background-image: linear-gradient(var(--border), var(--border));
+    background-size: calc(100% - 48px) 1px;
+    background-position: 24px bottom;
+    background-repeat: no-repeat;
 }
 
 .disclaimer-view.active {
@@ -1570,28 +1608,29 @@ input:checked + .checkmark {
     overflow: hidden;
 }
 
+/* 标题区：固定高度 + 水平内边距，分割线随卡片铺满一整行。 */
 .group-heading {
     display: flex;
-    min-height: 62px;
+    min-height: 52px;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin: 0 -24px 20px;
-    padding: 10px 24px;
-    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
 }
 
 .group-heading h3 {
     margin: 0;
-    font-size: 16px;
-    font-weight: 650;
-    line-height: 22px;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 24px;
 }
 
+/* 子模块统一内边距：上下 16px、左右 24px，字段间距 16px。 */
 .field-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
+    padding: 16px 24px;
 }
 
 .field.full {
@@ -1602,11 +1641,12 @@ input:checked + .checkmark {
     display: flex;
     min-width: 0;
     flex-direction: column;
-    gap: 7px;
+    gap: 8px;
 }
 
+/* 子设置标题：14px / 600，与 17px 的模块大标题明显区分。 */
 .field > span {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     line-height: 20px;
 }
@@ -1623,13 +1663,15 @@ input:checked + .checkmark {
     padding: 10px 11px;
     resize: vertical;
     font-family: var(--font-ui);
-    font-size: 12px;
-    line-height: 19px;
+    font-size: 13px;
+    line-height: 20px;
 }
 
+/* 提示文案：统一 12px / 400 / 浅色。 */
 .field small {
-    font-size: 11px;
-    line-height: 16px;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 18px;
 }
 
 .input-action,
@@ -1652,7 +1694,7 @@ input:checked + .checkmark {
     border-radius: 0 6px 6px 0;
     background: var(--surface-muted);
     color: #555961;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .suffix-input input {
@@ -1667,153 +1709,149 @@ input:checked + .checkmark {
     position: absolute;
     top: 50%;
     right: 11px;
-    color: var(--muted);
     font-size: 12px;
     transform: translateY(-50%);
 }
 
 .name-format-editor {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.name-format-group {
-    min-width: 0;
-    overflow: hidden;
+    min-height: 38px;
+    padding: 6px 11px;
     border: 1px solid var(--border-strong);
     border-radius: 6px;
-    background: var(--surface-muted);
+    background: var(--surface);
+    font-size: 13px;
+    line-height: 24px;
+    white-space: pre-wrap;
+    cursor: text;
+    overflow-wrap: anywhere;
 }
 
-.name-format-group header {
+.name-format-editor:focus {
+    border-color: var(--red);
+    outline: 0;
+    box-shadow: inset 0 0 0 1px var(--red), 0 0 0 4px rgba(207, 102, 114, .16);
+}
+
+/* 胶囊：inline-block 走 baseline 对齐，与编辑器文字保持同一准线。
+   中文字形相对基线天然偏高（上行 11px、下行仅 1px），对称内边距会让文字
+   视觉偏下、上边留白更多；故下内边距 +1px 补偿，使字形在胶囊内视觉居中。 */
+.name-format-token {
+    display: inline-block;
+    padding: 2px 2px 3px 2px;
+    border-radius: 5px;
+    background: #fff1f2;
+    color: #a82d32;
+    font-size: 13px;
+    line-height: 15px;
+    user-select: none;
+}
+
+.name-format-fields {
     display: flex;
-    min-height: 34px;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 10px;
-    border-bottom: 1px solid var(--border);
-}
-
-.name-format-group header strong {
-    font-size: 12px;
-    font-weight: 650;
-}
-
-.name-format-group header span {
-    color: var(--muted);
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-}
-
-.name-format-zone {
-    display: flex;
-    min-height: 104px;
-    align-content: flex-start;
     flex-wrap: wrap;
     gap: 6px;
-    padding: 9px;
-    transition: background 140ms ease, box-shadow 140ms ease;
 }
 
-.name-format-zone.drag-over {
-    background: #f0f2f4;
-    box-shadow: inset 0 0 0 2px rgba(52, 120, 212, 0.16);
-}
-
-.name-format-token {
-    position: relative;
+.name-format-field-chip {
     display: inline-flex;
-    height: 29px;
+    height: 26px;
     align-items: center;
-    gap: 7px;
-    padding: 0 9px 0 8px;
+    padding: 0 10px;
     border: 1px solid #d9dce1;
     border-radius: 5px;
     background: #ffffff;
     color: #4b5058;
     font-size: 12px;
+    cursor: pointer;
     white-space: nowrap;
-    cursor: grab;
-    touch-action: none;
+    transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
 }
 
-.name-format-zone.enabled .name-format-token {
-    border-color: #edc8ca;
-    background: #fff7f7;
-    color: #a82d32;
-}
-
-.name-format-token::before {
-    width: 8px;
-    height: 14px;
-    background-image: radial-gradient(circle, #a4a8ae 1px, transparent 1.5px);
-    background-position: 0 0;
-    background-size: 4px 5px;
-    content: "";
-}
-
-.name-format-token:hover {
+.name-format-field-chip:hover {
     border-color: #bfc3c9;
-    background: #ffffff;
 }
 
-.name-format-token:active {
-    cursor: grabbing;
+.name-format-preview {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
 }
 
-.name-format-token.dragging {
-    opacity: 0.35;
+.name-format-preview > span {
+    flex: none;
+    font-size: 12px;
+    line-height: 18px;
 }
 
+.name-format-preview code {
+    min-width: 0;
+    overflow: hidden;
+    font-family: var(--font-ui);
+    font-size: 12px;
+    line-height: 18px;
+    color: #514047;
+    text-overflow: ellipsis;
+    white-space: pre;
+}
+
+/* 开关区：每行独立承担水平内边距，行间分隔线同样左右内缩 24px。 */
 .setting-rows {
-    margin: 0 -24px 20px;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-}
-
-.setting-rows.standalone {
-    margin-bottom: 0;
+    padding: 0;
 }
 
 .setting-row {
     display: flex;
-    min-height: 61px;
+    min-height: 68px;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    padding: 9px 24px;
-    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    background-image: linear-gradient(var(--border), var(--border));
+    background-size: calc(100% - 48px) 1px;
+    background-position: 24px bottom;
+    background-repeat: no-repeat;
 }
 
 .setting-row:last-child {
-    border-bottom: 0;
+    background-image: none;
 }
 
 .setting-row > div {
     display: flex;
     min-width: 0;
     flex-direction: column;
+    gap: 2px;
 }
 
+/* 子设置标题：14px / 600。 */
 .setting-row strong {
     font-size: 14px;
-    font-weight: 620;
+    font-weight: 600;
     line-height: 21px;
 }
 
+/* 提示文案：12px / 400，与字段区提示统一。 */
 .setting-row span {
-    color: var(--muted);
-    font-size: 13px;
-    line-height: 21px;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 18px;
 }
 
 .select-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.general-grid {
-    margin-bottom: 20px;
+/* 网络与请求：第一行 3 个、第二行 2 个，用 6 列网格均分整行。 */
+.network-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.network-grid > .field:not(.full) {
+    grid-column: span 2;
+}
+
+.network-grid > .field.wide-half {
+    grid-column: span 3;
 }
 
 .about-view.active {
@@ -2350,7 +2388,8 @@ body {
 }
 
 .topbar-title h1,
-.page-heading h2 {
+.page-heading h2,
+.settings-side h2 {
     color: #33292d;
 }
 
@@ -2364,8 +2403,7 @@ body {
 .compact-task-list,
 .queue-results,
 .file-download-list,
-.history-list-wrap,
-.settings-panel {
+.history-list-wrap {
     border-color: var(--border);
     background: var(--surface);
     box-shadow: var(--shadow);
@@ -2389,10 +2427,7 @@ body {
 }
 
 .composer textarea:hover,
-.search-box input:hover,
-.field input:hover,
-.field select:hover,
-.field textarea:hover {
+.search-box input:hover {
     border-color: #d5c6ca;
 }
 
@@ -2514,23 +2549,17 @@ body {
     color: #a94956;
 }
 
-.group-heading {
-    border-bottom-color: #f0e7e8;
-    background: #fff8f9;
-}
-
+/* 子设置标题与提示文案的颜色统一，字号由基础规则统一定义。 */
 .field > span,
 .setting-row strong {
     color: #514047;
 }
 
 .field small,
-.setting-row span {
+.setting-row span,
+.name-format-preview > span,
+.suffix-input span {
     color: #83767b;
-}
-
-.setting-row:hover {
-    background: #fff9fa;
 }
 
 .switch {

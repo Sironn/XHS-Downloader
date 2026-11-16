@@ -35,7 +35,7 @@ from ..translation import _
 from .ui_strings import (
     NAME_FORMAT_FIELDS,
     get_ui_translations,
-    normalize_name_format_field,
+    normalize_name_format_template,
 )
 
 # 下载记录固定按每页 100 条返回，前端仅负责渲染当前页。
@@ -694,15 +694,9 @@ class GuiBackend:
         updated.update(
             {key: value for key, value in data.items() if key in Settings.default}
         )
-        # 英文字段名称可能包含空格，GUI 以数组提交；旧配置字符串仍按项目格式读取。
-        configured_name_format = updated.get("name_format") or ""
-        fields = (
-            configured_name_format
-            if isinstance(configured_name_format, list)
-            else configured_name_format.split()
-        )
-        name_fields = [normalize_name_format_field(field) for field in fields]
-        updated["name_format"] = " ".join(dict.fromkeys(name_fields))
+        # 模板中的字段占位符可能为英文显示名，统一还原为 Manager 的中文字段值。
+        configured_name_format = str(updated.get("name_format") or "")
+        updated["name_format"] = normalize_name_format_template(configured_name_format)
         self.settings_manager.update(updated)
         await self._close_xhs()
         self.settings = updated

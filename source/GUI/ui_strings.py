@@ -1,3 +1,5 @@
+from re import sub as re_sub
+
 from ..module import Manager
 from ..translation import _, switch_language
 
@@ -86,8 +88,6 @@ def get_ui_messages() -> dict[str, str]:
         "history.no_match": _("未找到匹配的作品 ID"),
         "history.read_failed": _("读取下载记录失败"),
         "history.deleted_selected": _("已删除 {0} 条下载记录"),
-        "settings.discard": _("放弃更改"),
-        "settings.save": _("保存配置"),
         "settings.download": _("下载设置"),
         "settings.archive": _("归档与记录"),
         "settings.network": _("网络与请求"),
@@ -98,9 +98,8 @@ def get_ui_messages() -> dict[str, str]:
         "settings.folder_name": _("作品文件夹"),
         "settings.folder_name_help": _("工作目录下用于保存作品文件的文件夹名称"),
         "settings.name_format": _("作品文件名称格式"),
-        "settings.name_format_help": _("已启用字段按顺序以下划线拼接为作品文件名称"),
-        "settings.enabled_fields": _("已启用字段"),
-        "settings.disabled_fields": _("未启用字段"),
+        "settings.name_format_preview": _("名称预览"),
+        "settings.insert_field": _("插入字段"),
         "settings.image_download": _("图文作品下载开关"),
         "settings.image_download_help": _("关闭后，跳过下载图文和图集作品文件"),
         "settings.video_download": _("视频作品下载开关"),
@@ -160,8 +159,6 @@ def get_ui_messages() -> dict[str, str]:
         "settings.script_server_help": _(
             "启动 WebSocket 服务，接收来自用户脚本的下载任务"
         ),
-        "settings.saved": _("程序配置已保存"),
-        "settings.discarded": _("已放弃未保存更改"),
         "about.description": _("小红书（XiaoHongShu、RedNote）作品采集工具"),
         "about.version": _("程序版本"),
         "about.author": _("项目作者"),
@@ -195,8 +192,6 @@ def get_ui_messages() -> dict[str, str]:
         "toast.no_supported_link": _("提取小红书作品链接失败"),
         "toast.links_copied": _("已复制 {0} 个链接"),
         "toast.no_links_to_copy": _("当前筛选下没有作品"),
-        "name.drag_disable": _("拖动调整顺序，点击停用"),
-        "name.drag_enable": _("拖动或点击启用"),
     }
 
 
@@ -219,11 +214,15 @@ def _build_name_format_labels(language: str) -> dict[str, str]:
     }
 
 
-def normalize_name_format_field(field: str) -> str:
-    """将前端提交的中文或英文显示名称转换为后端中文字段值。"""
+def normalize_name_format_template(template: str) -> str:
+    """将模板中占位符的英文显示名还原为后端中文字段值。
 
-    if field in NAME_FORMAT_FIELDS:
-        return field
-    if field in NAME_FORMAT_VALUES:
-        return NAME_FORMAT_VALUES[field]
-    return field
+    前端提交的模板使用 %字段% 占位符；英文字段显示名通过映射还原，
+    中文字段原样保留，未知占位符原样保留交由 Manager 校验兜底。
+    """
+
+    def _normalize(match) -> str:
+        field = match.group(1)
+        return f"%{NAME_FORMAT_VALUES.get(field, field)}%"
+
+    return re_sub(r"%([^%]+)%", _normalize, template)

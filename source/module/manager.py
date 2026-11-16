@@ -48,6 +48,7 @@ class Manager:
         "https://": None,
     }
     SEPARATE = "_"
+    NAME_PATTERN = compile(r"%([^%]+)%")
     WEB_ID = r"(?:^|; )webId=[^;]+"
     WEB_SESSION = r"(?:^|; )web_session=[^;]+"
 
@@ -124,8 +125,8 @@ class Manager:
         self.video_cover_download = self.check_bool(video_cover_download, False)
         self.video_preference = self.check_video_preference(video_preference)
         self.live_download = self.check_bool(live_download, True)
-        self.author_archive = self.check_bool(author_archive, False)
-        self.write_mtime = self.check_bool(write_mtime, False)
+        self.author_archive = self.check_bool(author_archive, True)
+        self.write_mtime = self.check_bool(write_mtime, True)
         self.script_server = self.check_bool(script_server, False)
         self.note_format = self.__check_note_format(note_format)
         self.create_folder()
@@ -227,11 +228,19 @@ class Manager:
         remove_empty_directories(self.folder)
 
     def __check_name_format(self, format_: str) -> str:
-        keys = format_.split()
-        return next(
-            ("发布时间 作者昵称 作品标题" for key in keys if key not in self.NAME_KEYS),
-            format_,
-        )
+        # 空模板直接回退默认值。
+        if not format_.strip():
+            return "%作者昵称% [%发布时间%] %作品ID%"
+        # 校验模板中的 %字段% 占位符，非法占位符则回退默认模板。
+        for field in self.NAME_PATTERN.findall(format_):
+            if field not in self.NAME_KEYS:
+                return "%作者昵称% [%发布时间%] %作品ID%"
+        # 兼容旧版空格分隔字段格式，自动迁移为 %字段% 模板。
+        if not self.NAME_PATTERN.search(format_):
+            keys = format_.split()
+            if keys and all(key in self.NAME_KEYS for key in keys):
+                return "_".join(f"%{key}%" for key in keys)
+        return format_
 
     @staticmethod
     def check_video_preference(preference: str) -> str:

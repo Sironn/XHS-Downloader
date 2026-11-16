@@ -140,7 +140,7 @@ class XHS:
         mapping_data: dict | None = None,
         work_path="",
         folder_name="Download",
-        name_format="发布时间 作者昵称 作品标题",
+        name_format="%作者昵称% [%发布时间%] %作品ID%",
         impersonate: str = IMPERSONATE,
         cookie: str = "",
         proxy: str | None = None,
@@ -154,12 +154,12 @@ class XHS:
         image_download=True,
         video_download=True,
         video_cover_download=False,
-        live_download=False,
+        live_download=True,
         video_preference="resolution",
         folder_mode=False,
         download_record=True,
-        author_archive=False,
-        write_mtime=False,
+        author_archive=True,
+        write_mtime=True,
         language="zh_CN",
         # read_cookie: int | str = None,
         script_server: bool = False,
@@ -659,19 +659,18 @@ class XHS:
         return Namespace(data)
 
     def __naming_rules(self, data: dict) -> str:
-        keys = self.manager.name_format.split()
-        values = []
-        for key in keys:
-            match key:
-                case "发布时间":
-                    values.append(self.__get_name_time(data))
-                case "作品标题":
-                    values.append(self.__get_name_title(data))
-                case _:
-                    values.append(data[key])
+        template = self.manager.name_format
+        parts = []
+        cursor = 0
+        for match in self.manager.NAME_PATTERN.finditer(template):
+            parts.append(template[cursor:match.start()])
+            key = match.group(1)
+            parts.append(self.__get_name_value(key, data))
+            cursor = match.end()
+        parts.append(template[cursor:])
         return beautify_string(
             self.CLEANER.filter_name(
-                self.manager.SEPARATE.join(values),
+                "".join(parts),
                 default=self.manager.SEPARATE.join(
                     (
                         data["作者ID"],
@@ -682,9 +681,19 @@ class XHS:
             length=128,
         )
 
+    def __get_name_value(self, key: str, data: dict) -> str:
+        match key:
+            case "发布时间":
+                return self.__get_name_time(data)
+            case "作品标题":
+                return self.__get_name_title(data)
+            case _:
+                return str(data.get(key, ""))
+
     @staticmethod
     def __get_name_time(data: dict) -> str:
-        return data["发布时间"].replace(":", ".")
+        # 文件名不允许半角冒号，用 U+02D0 保留 hhːmmːss 样式；日期与时间用空格分隔。
+        return data["发布时间"].replace("_", " ").replace(":", "\u02D0")
 
     def __get_name_title(self, data: dict) -> str:
         return (
